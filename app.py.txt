@@ -1,0 +1,67 @@
+# app.py
+import sys
+from scraper import scrape_all_pages
+import database
+
+def menu():
+    print("==== 博客來 LLM 書籍爬蟲系統 ====")
+    print("1. 更新書籍資料庫")
+    print("2. 查詢書籍")
+    print("3. 離開")
+    choice = input("請輸入選項編號: ").strip()
+    return choice
+
+def search_menu():
+    print("---- 查詢方式 ----")
+    print("1. 依書名查詢")
+    print("2. 依作者查詢")
+    print("3. 回上一層")
+    return input("請選擇: ").strip()
+
+def do_update():
+    print("開始爬取網站，請稍候...")
+    books = scrape_all_pages()
+    print(f"共抓取到 {len(books)} 筆（含可能重複）資料，開始寫入資料庫...")
+    inserted = database.insert_books(books)
+    print(f"已成功新增 {inserted} 筆新書資料。")
+
+def do_query():
+    while True:
+        c = search_menu()
+        if c == "1":
+            kw = input("輸入書名關鍵字: ").strip()
+            rows = database.query_by_title(kw)
+            if rows:
+                for r in rows:
+                    print(f"id: {r['id']} | title: {r['title']} | author: {r['author']} | price: {r['price']} | link: {r['link']}")
+            else:
+                print("查無資料")
+        elif c == "2":
+            kw = input("輸入作者關鍵字: ").strip()
+            rows = database.query_by_author(kw)
+            if rows:
+                for r in rows:
+                    print(f"id: {r['id']} | title: {r['title']} | author: {r['author']} | price: {r['price']} | link: {r['link']}")
+            else:
+                print("查無資料")
+        elif c == "3":
+            break
+        else:
+            print("無效選項，請重新輸入。")
+
+def main():
+    database.init_db()
+    while True:
+        c = menu()
+        if c == "1":
+            do_update()
+        elif c == "2":
+            do_query()
+        elif c == "3":
+            print("離開系統。")
+            sys.exit(0)
+        else:
+            print("無效選項，請重新輸入。")
+
+if __name__ == "__main__":
+    main()

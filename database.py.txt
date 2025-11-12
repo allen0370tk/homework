@@ -1,0 +1,64 @@
+# database.py
+import sqlite3
+from typing import List, Dict
+
+DB_FILE = "books.db"
+TABLE_NAME = "llm_books"
+
+def get_conn():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"""
+    CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL UNIQUE,
+        author TEXT,
+        price INTEGER,
+        link TEXT
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert_books(book_list: List[Dict]) -> int:
+    """
+    book_list: list of dicts with keys: title, author, price, link
+    Returns number of newly inserted rows.
+    Uses INSERT OR IGNORE to avoid duplicates by title.
+    """
+    if not book_list:
+        return 0
+    conn = get_conn()
+    cur = conn.cursor()
+    before = conn.total_changes
+    to_insert = [(b.get("title"), b.get("author"), b.get("price", 0), b.get("link")) for b in book_list]
+    cur.executemany(f"""
+        INSERT OR IGNORE INTO {TABLE_NAME} (title, author, price, link)
+        VALUES (?, ?, ?, ?)
+    """, to_insert)
+    conn.commit()
+    after = conn.total_changes
+    inserted = after - before
+    conn.close()
+    return inserted
+
+def query_by_title(keyword: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"SELECT * FROM {TABLE_NAME} WHERE title LIKE ?", (f"%{keyword}%",))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+def query_by_author(keyword: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"SELECT * FROM {TABLE_NAME} WHERE author LIKE ?", (f"%{keyword}%",))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
